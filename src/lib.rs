@@ -945,6 +945,74 @@ impl IdlState {
 struct_boilerplate!(IdlState);
 debug_display!(IdlState);
 
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlEvent(anchor_idl::IdlEvent);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlEvent {
+    #[new]
+    fn new(name: String, fields: Vec<IdlEventField>) -> Self {
+        anchor_idl::IdlEvent {
+            name,
+            fields: iter_into!(fields),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn fields(&self) -> Vec<IdlEventField> {
+        iter_into!(self.0.fields.clone())
+    }
+}
+
+struct_boilerplate!(IdlEvent);
+debug_display!(IdlEvent);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlEventField(anchor_idl::IdlEventField);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlEventField {
+    #[new]
+    fn new(name: String, ty: IdlType, index: bool) -> Self {
+        anchor_idl::IdlEventField {
+            name,
+            ty: ty.into(),
+            index,
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+
+    #[getter]
+    pub fn index(&self) -> bool {
+        self.0.index
+    }
+}
+
+struct_boilerplate!(IdlEventField);
+debug_display!(IdlEventField);
+
 #[pymodule]
 fn anchorpy_core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<IdlTypeSimple>()?;
