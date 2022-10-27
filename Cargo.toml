@@ -16,6 +16,6 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "0.17.2", features = ["extension-module", "abi3-py39"] }
 solders-macros = "0.6.0"
 derive_more = "0.99.17"
-anchor-syn = { version = "0.25.0", features = ["idl"] }
+anchor-syn = { git = "https://github.com/coral-xyz/anchor", features = ["idl"], rev = "fa12498" }
 serde = { version = "1.0.147", features = ["derive"] }
 solders = "0.9.3"

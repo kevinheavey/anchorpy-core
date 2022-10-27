@@ -37,6 +37,12 @@ macro_rules! debug_display {
     };
 }
 
+macro_rules! iter_into {
+    ($obj:expr) => {
+        $obj.into_iter().map(|x| x.into()).collect()
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, Hash)]
 #[pyclass(module = "anchorpy_core.idl")]
 pub enum IdlTypeSimple {
@@ -93,7 +99,7 @@ impl PyHash for IdlTypeDefined {}
 #[pymethods]
 impl IdlTypeDefined {
     #[new]
-    fn new(defined: String) -> Self {
+    pub fn new(defined: String) -> Self {
         defined.into()
     }
 
@@ -114,7 +120,7 @@ debug_display!(IdlTypeOption);
 #[pymethods]
 impl IdlTypeOption {
     #[new]
-    fn new(option: IdlType) -> Self {
+    pub fn new(option: IdlType) -> Self {
         Self(option.into())
     }
 
@@ -153,8 +159,13 @@ pub struct IdlTypeArray(Box<IdlType>, usize);
 #[pymethods]
 impl IdlTypeArray {
     #[new]
-    fn new(array: (IdlType, usize)) -> Self {
+    pub fn new(array: (IdlType, usize)) -> Self {
         Self(array.0.into(), array.1)
+    }
+
+    #[getter]
+    pub fn array(&self) -> (IdlType, usize) {
+        (*self.0.clone(), self.1)
     }
 }
 
@@ -162,7 +173,7 @@ struct_boilerplate!(IdlTypeArray);
 debug_display!(IdlTypeArray);
 
 #[derive(Debug, Clone, PartialEq, FromPyObject, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(rename_all = "camelCase")]
 pub enum IdlTypeCompound {
     Defined(IdlTypeDefined),
     Option(IdlTypeOption),
@@ -252,13 +263,696 @@ impl From<IdlType> for anchor_idl::IdlType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlConst(anchor_idl::IdlConst);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlConst {
+    #[new]
+    fn new(name: String, ty: IdlType, value: String) -> Self {
+        anchor_idl::IdlConst {
+            name,
+            ty: ty.into(),
+            value,
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+
+    #[getter]
+    pub fn value(&self) -> String {
+        self.0.value.clone()
+    }
+}
+
+struct_boilerplate!(IdlConst);
+debug_display!(IdlConst);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlField(anchor_idl::IdlField);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlField {
+    #[new]
+    fn new(name: String, docs: Option<Vec<String>>, ty: IdlType) -> Self {
+        anchor_idl::IdlField {
+            name,
+            docs,
+            ty: ty.into(),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn docs(&self) -> Option<Vec<String>> {
+        self.0.docs.clone()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+}
+
+struct_boilerplate!(IdlField);
+debug_display!(IdlField);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeDefinitionTyStruct(Vec<IdlField>);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlTypeDefinitionTyStruct {
+    #[new]
+    fn new(fields: Vec<IdlField>) -> Self {
+        fields.into()
+    }
+
+    #[getter]
+    pub fn fields(&self) -> Vec<IdlField> {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(IdlTypeDefinitionTyStruct);
+debug_display!(IdlTypeDefinitionTyStruct);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct EnumFieldsNamed(Vec<IdlField>);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl EnumFieldsNamed {
+    #[new]
+    fn new(fields: Vec<IdlField>) -> Self {
+        fields.into()
+    }
+
+    #[getter]
+    pub fn fields(&self) -> Vec<IdlField> {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(EnumFieldsNamed);
+debug_display!(EnumFieldsNamed);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct EnumFieldsTuple(Vec<IdlType>);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl EnumFieldsTuple {
+    #[new]
+    fn new(fields: Vec<IdlType>) -> Self {
+        fields.into()
+    }
+
+    #[getter]
+    pub fn fields(&self) -> Vec<IdlType> {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(EnumFieldsTuple);
+debug_display!(EnumFieldsTuple);
+
+#[derive(Debug, Clone, PartialEq, FromPyObject, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EnumFields {
+    Named(EnumFieldsNamed),
+    Tuple(EnumFieldsTuple),
+}
+
+impl From<EnumFields> for anchor_idl::EnumFields {
+    fn from(t: EnumFields) -> Self {
+        match t {
+            EnumFields::Named(n) => Self::Named(iter_into!(n.0)),
+            EnumFields::Tuple(t) => Self::Tuple(iter_into!(t.0)),
+        }
+    }
+}
+
+impl From<anchor_idl::EnumFields> for EnumFields {
+    fn from(t: anchor_idl::EnumFields) -> Self {
+        match t {
+            anchor_idl::EnumFields::Named(n) => Self::Named(EnumFieldsNamed(iter_into!(n))),
+            anchor_idl::EnumFields::Tuple(t) => Self::Tuple(EnumFieldsTuple(iter_into!(t))),
+        }
+    }
+}
+
+impl IntoPy<PyObject> for EnumFields {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            EnumFields::Named(x) => x.into_py(py),
+            EnumFields::Tuple(x) => x.into_py(py),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlEnumVariant(anchor_idl::IdlEnumVariant);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlEnumVariant {
+    #[new]
+    fn new(name: String, fields: Option<EnumFields>) -> Self {
+        anchor_idl::IdlEnumVariant {
+            name,
+            fields: fields.map(|f| f.into()),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn fields(&self) -> Option<EnumFields> {
+        self.0.fields.clone().map(|f| f.into())
+    }
+}
+
+struct_boilerplate!(IdlEnumVariant);
+debug_display!(IdlEnumVariant);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeDefinitionTyEnum(Vec<IdlEnumVariant>);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlTypeDefinitionTyEnum {
+    #[new]
+    fn new(variants: Vec<IdlEnumVariant>) -> Self {
+        variants.into()
+    }
+
+    #[getter]
+    pub fn variants(&self) -> Vec<IdlEnumVariant> {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(IdlTypeDefinitionTyEnum);
+debug_display!(IdlTypeDefinitionTyEnum);
+
+#[derive(Debug, Clone, PartialEq, FromPyObject, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase", tag = "kind")]
+pub enum IdlTypeDefinitionTy {
+    Struct(IdlTypeDefinitionTyStruct),
+    Enum(IdlTypeDefinitionTyEnum),
+}
+
+impl From<IdlTypeDefinitionTy> for anchor_idl::IdlTypeDefinitionTy {
+    fn from(t: IdlTypeDefinitionTy) -> Self {
+        match t {
+            IdlTypeDefinitionTy::Struct(s) => Self::Struct {
+                fields: iter_into!(s.0),
+            },
+            IdlTypeDefinitionTy::Enum(e) => Self::Enum {
+                variants: iter_into!(e.0),
+            },
+        }
+    }
+}
+
+impl From<anchor_idl::IdlTypeDefinitionTy> for IdlTypeDefinitionTy {
+    fn from(t: anchor_idl::IdlTypeDefinitionTy) -> Self {
+        match t {
+            anchor_idl::IdlTypeDefinitionTy::Struct { fields } => {
+                Self::Struct(IdlTypeDefinitionTyStruct(iter_into!(fields)))
+            }
+            anchor_idl::IdlTypeDefinitionTy::Enum { variants } => {
+                Self::Enum(IdlTypeDefinitionTyEnum(iter_into!(variants)))
+            }
+        }
+    }
+}
+
+impl IntoPy<PyObject> for IdlTypeDefinitionTy {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            IdlTypeDefinitionTy::Struct(x) => x.into_py(py),
+            IdlTypeDefinitionTy::Enum(x) => x.into_py(py),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeDefinition(anchor_idl::IdlTypeDefinition);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlTypeDefinition {
+    #[new]
+    fn new(name: String, docs: Option<Vec<String>>, ty: IdlTypeDefinitionTy) -> Self {
+        anchor_idl::IdlTypeDefinition {
+            name,
+            docs,
+            ty: ty.into(),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn docs(&self) -> Option<Vec<String>> {
+        self.0.docs.clone()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlTypeDefinitionTy {
+        self.0.ty.clone().into()
+    }
+}
+
+struct_boilerplate!(IdlTypeDefinition);
+debug_display!(IdlTypeDefinition);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, FromPyObject)]
+#[serde(untagged)]
+pub enum IdlAccountItem {
+    IdlAccount(IdlAccount),
+    IdlAccounts(IdlAccounts),
+}
+
+impl From<IdlAccountItem> for anchor_idl::IdlAccountItem {
+    fn from(a: IdlAccountItem) -> Self {
+        match a {
+            IdlAccountItem::IdlAccount(x) => Self::IdlAccount(x.into()),
+            IdlAccountItem::IdlAccounts(x) => Self::IdlAccounts(x.into()),
+        }
+    }
+}
+
+impl From<anchor_idl::IdlAccountItem> for IdlAccountItem {
+    fn from(a: anchor_idl::IdlAccountItem) -> Self {
+        match a {
+            anchor_idl::IdlAccountItem::IdlAccount(x) => Self::IdlAccount(x.into()),
+            anchor_idl::IdlAccountItem::IdlAccounts(x) => Self::IdlAccounts(x.into()),
+        }
+    }
+}
+
+impl IntoPy<PyObject> for IdlAccountItem {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            IdlAccountItem::IdlAccount(x) => x.into_py(py),
+            IdlAccountItem::IdlAccounts(x) => x.into_py(py),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlAccounts(anchor_idl::IdlAccounts);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlAccounts {
+    #[new]
+    fn new(name: String, accounts: Vec<IdlAccountItem>) -> Self {
+        anchor_idl::IdlAccounts {
+            name,
+            accounts: iter_into!(accounts),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn accounts(&self) -> Vec<IdlAccountItem> {
+        iter_into!(self.0.accounts.clone())
+    }
+}
+
+struct_boilerplate!(IdlAccounts);
+debug_display!(IdlAccounts);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlSeedConst(anchor_idl::IdlSeedConst);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlSeedConst {
+    #[new]
+    fn new(ty: IdlType, value: String) -> Self {
+        anchor_idl::IdlSeedConst {
+            ty: ty.into(),
+            value: value.into(),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+
+    #[getter]
+    pub fn value(&self) -> String {
+        self.0.value.clone().to_string()
+    }
+}
+
+struct_boilerplate!(IdlSeedConst);
+debug_display!(IdlSeedConst);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlSeedArg(anchor_idl::IdlSeedArg);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlSeedArg {
+    #[new]
+    fn new(ty: IdlType, path: String) -> Self {
+        anchor_idl::IdlSeedArg {
+            ty: ty.into(),
+            path,
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+
+    #[getter]
+    pub fn path(&self) -> String {
+        self.0.path.clone()
+    }
+}
+
+struct_boilerplate!(IdlSeedArg);
+debug_display!(IdlSeedArg);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlSeedAccount(anchor_idl::IdlSeedAccount);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlSeedAccount {
+    #[new]
+    fn new(ty: IdlType, account: Option<String>, path: String) -> Self {
+        anchor_idl::IdlSeedAccount {
+            ty: ty.into(),
+            account,
+            path,
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn ty(&self) -> IdlType {
+        self.0.ty.clone().into()
+    }
+
+    #[getter]
+    pub fn acount(&self) -> Option<String> {
+        self.0.account.clone()
+    }
+
+    #[getter]
+    pub fn path(&self) -> String {
+        self.0.path.clone()
+    }
+}
+
+struct_boilerplate!(IdlSeedAccount);
+debug_display!(IdlSeedAccount);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, FromPyObject)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum IdlSeed {
+    Const(IdlSeedConst),
+    Arg(IdlSeedArg),
+    Account(IdlSeedAccount),
+}
+
+impl From<IdlSeed> for anchor_idl::IdlSeed {
+    fn from(s: IdlSeed) -> Self {
+        match s {
+            IdlSeed::Const(x) => Self::Const(x.into()),
+            IdlSeed::Arg(x) => Self::Arg(x.into()),
+            IdlSeed::Account(x) => Self::Account(x.into()),
+        }
+    }
+}
+
+impl From<anchor_idl::IdlSeed> for IdlSeed {
+    fn from(s: anchor_idl::IdlSeed) -> Self {
+        match s {
+            anchor_idl::IdlSeed::Const(x) => Self::Const(x.into()),
+            anchor_idl::IdlSeed::Arg(x) => Self::Arg(x.into()),
+            anchor_idl::IdlSeed::Account(x) => Self::Account(x.into()),
+        }
+    }
+}
+
+impl IntoPy<PyObject> for IdlSeed {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            IdlSeed::Const(x) => x.into_py(py),
+            IdlSeed::Arg(x) => x.into_py(py),
+            IdlSeed::Account(x) => x.into_py(py),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlPda(anchor_idl::IdlPda);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlPda {
+    #[new]
+    fn new(seeds: Vec<IdlSeed>, program_id: Option<IdlSeed>) -> Self {
+        anchor_idl::IdlPda {
+            seeds: iter_into!(seeds),
+            program_id: program_id.map(|x| x.into()),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn seeds(&self) -> Vec<IdlSeed> {
+        iter_into!(self.0.seeds.clone())
+    }
+
+    #[getter]
+    pub fn program_id(&self) -> Option<IdlSeed> {
+        self.0.program_id.clone().map(|x| x.into())
+    }
+}
+
+struct_boilerplate!(IdlPda);
+debug_display!(IdlPda);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlAccount(anchor_idl::IdlAccount);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlAccount {
+    #[new]
+    fn new(
+        name: String,
+        is_mut: bool,
+        is_signer: bool,
+        docs: Option<Vec<String>>,
+        pda: Option<IdlPda>,
+        relations: Vec<String>,
+    ) -> Self {
+        anchor_idl::IdlAccount {
+            name,
+            is_mut,
+            is_signer,
+            docs,
+            pda: pda.map(|x| x.into()),
+            relations,
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn is_mut(&self) -> bool {
+        self.0.is_mut
+    }
+
+    #[getter]
+    pub fn is_signer(&self) -> bool {
+        self.0.is_signer
+    }
+
+    #[getter]
+    pub fn docs(&self) -> Option<Vec<String>> {
+        self.0.docs.clone()
+    }
+
+    #[getter]
+    pub fn pda(&self) -> Option<IdlPda> {
+        self.0.pda.clone().map(|x| x.into())
+    }
+
+    #[getter]
+    pub fn relations(&self) -> Vec<String> {
+        self.0.relations.clone()
+    }
+}
+
+struct_boilerplate!(IdlAccount);
+debug_display!(IdlAccount);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlInstruction(anchor_idl::IdlInstruction);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlInstruction {
+    #[new]
+    fn new(
+        name: String,
+        docs: Option<Vec<String>>,
+        accounts: Vec<IdlAccountItem>,
+        args: Vec<IdlField>,
+        returns: Option<IdlType>,
+    ) -> Self {
+        anchor_idl::IdlInstruction {
+            name,
+            docs,
+            accounts: iter_into!(accounts),
+            args: iter_into!(args),
+            returns: returns.map(|x| x.into()),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn docs(&self) -> Option<Vec<String>> {
+        self.0.docs.clone()
+    }
+
+    #[getter]
+    pub fn accounts(&self) -> Vec<IdlAccountItem> {
+        iter_into!(self.0.accounts.clone())
+    }
+
+    #[getter]
+    pub fn returns(&self) -> Option<IdlType> {
+        self.0.returns.clone().map(|x| x.into())
+    }
+}
+
+struct_boilerplate!(IdlInstruction);
+debug_display!(IdlInstruction);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlState(anchor_idl::IdlState);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlState {
+    #[new]
+    fn new(strct: IdlTypeDefinition, methods: Vec<IdlInstruction>) -> Self {
+        anchor_idl::IdlState {
+            strct: strct.into(),
+            methods: iter_into!(methods),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn strct(&self) -> IdlTypeDefinition {
+        self.0.strct.clone().into()
+    }
+
+    #[getter]
+    pub fn methods(&self) -> Vec<IdlInstruction> {
+        iter_into!(self.0.methods.clone())
+    }
+}
+
+struct_boilerplate!(IdlState);
+debug_display!(IdlState);
+
 #[pymodule]
 fn anchorpy_core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<IdlTypeSimple>()?;
     m.add_class::<IdlTypeDefined>()?;
     m.add_class::<IdlTypeOption>()?;
     m.add_class::<IdlTypeVec>()?;
-    m.add_class::<IdlTypeVec>()?;
+    m.add_class::<IdlTypeArray>()?;
+    m.add_class::<IdlConst>()?;
     let typing = py.import("typing")?;
     let union = typing.getattr("Union")?;
     let compound_members = vec![
