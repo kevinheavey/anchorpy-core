@@ -1,0 +1,21 @@
+[package]
+name = "anchorpy_core"
+version = "0.9.3"
+edition = "2021"
+include = ["/src", "/LICENSE", "/pyproject.toml"]
+description = "Python bindings for Anchor Rust code"
+license = "Apache-2.0"
+repository = "https://github.com/kevinheavey/anchorpy-core"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "anchorpy_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.17.2", features = ["extension-module", "abi3-py39"] }
+solders-macros = "0.6.0"
+derive_more = "0.99.17"
+anchor-syn = { version = "0.25.0", features = ["idl"] }
+serde = { version = "1.0.147", features = ["derive"] }
+solders = "0.9.3"

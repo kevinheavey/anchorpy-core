@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "anchorpy-core"
+version = "0.1.0"
+description = "Python bindings for Anchor Rust code"
+authors = ["Kevin Heavey <kevinheavey123@gmail.com>"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.dev-dependencies]
+maturin = "^0.13.6"
+black = "^22.10.0"
+mypy = "^0.982"
+pytest = "^7.2.0"
+flake8 = "^5.0.4"
+bump2version = "^1.0.1"
+
+[build-system]
+requires = ["maturin>=0.13.6,<0.14"]
+build-backend = "maturin"
+
+[project]
+name = "anchorpy-core"
+version = "0.1.0"
+description = "Python bindings for Anchor Rust code"
+authors = [ {name = "kevinheavey", email = "kevinheavey123@gmail.com"} ]
+license = {file = "LICENSE"}
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+homepage = "https://github.com/kevinheavey/anchorpy-core"
+documentation = "https://kevinheavey.github.io/anchorpy-core/"
+repository = "https://github.com/kevinheavey/anchorpy-core"
+changelog = "https://github.com/kevinheavey/anchorpy-core/blob/main/CHANGELOG.md"
