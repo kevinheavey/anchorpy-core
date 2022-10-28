@@ -1013,6 +1013,126 @@ impl IdlEventField {
 struct_boilerplate!(IdlEventField);
 debug_display!(IdlEventField);
 
+#[derive(Debug, Clone, PartialEq, Eq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlErrorCode(anchor_idl::IdlErrorCode);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlErrorCode {
+    #[new]
+    fn new(code: u32, name: String, msg: Option<String>) -> Self {
+        anchor_idl::IdlErrorCode { code, name, msg }.into()
+    }
+
+    #[getter]
+    pub fn code(&self) -> u32 {
+        self.0.code
+    }
+
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
+    #[getter]
+    pub fn msg(&self) -> Option<String> {
+        self.0.msg.clone()
+    }
+}
+
+struct_boilerplate!(IdlErrorCode);
+debug_display!(IdlErrorCode);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct Idl(anchor_idl::Idl);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl Idl {
+    #[allow(clippy::too_many_arguments)]
+    #[new]
+    fn new(
+        version: String,
+        name: String,
+        docs: Option<Vec<String>>,
+        constants: Vec<IdlConst>,
+        instructions: Vec<IdlInstruction>,
+        state: Option<IdlState>,
+        accounts: Vec<IdlTypeDefinition>,
+        types: Vec<IdlTypeDefinition>,
+        events: Option<Vec<IdlEvent>>,
+        errors: Option<Vec<IdlErrorCode>>,
+        metadata: Option<String>,
+    ) -> Self {
+        anchor_idl::Idl {
+            version,
+            name,
+            docs,
+            constants: iter_into!(constants),
+            instructions: iter_into!(instructions),
+            state: state.map(|x| x.into()),
+            accounts: iter_into!(accounts),
+            types: iter_into!(types),
+            events: events.map(|x| iter_into!(x)),
+            errors: errors.map(|x| iter_into!(x)),
+            metadata: metadata.map(|x| x.into()),
+        }
+        .into()
+    }
+
+    #[getter]
+    pub fn version(&self) -> String {
+        self.0.version.clone()
+    }
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+    #[getter]
+    pub fn docs(&self) -> Option<Vec<String>> {
+        self.0.docs.clone()
+    }
+    #[getter]
+    pub fn constants(&self) -> Vec<IdlConst> {
+        iter_into!(self.0.constants.clone())
+    }
+    #[getter]
+    pub fn instructions(&self) -> Vec<IdlInstruction> {
+        iter_into!(self.0.instructions.clone())
+    }
+    #[getter]
+    pub fn state(&self) -> Option<IdlState> {
+        self.0.state.clone().map(|x| x.into())
+    }
+    #[getter]
+    pub fn accounts(&self) -> Vec<IdlTypeDefinition> {
+        iter_into!(self.0.accounts.clone())
+    }
+    #[getter]
+    pub fn types(&self) -> Vec<IdlTypeDefinition> {
+        iter_into!(self.0.types.clone())
+    }
+    #[getter]
+    pub fn events(&self) -> Option<Vec<IdlEvent>> {
+        self.0.events.clone().map(|x| iter_into!(x))
+    }
+    #[getter]
+    pub fn errors(&self) -> Option<Vec<IdlErrorCode>> {
+        self.0.errors.clone().map(|x| iter_into!(x))
+    }
+    #[getter]
+    pub fn metadata(&self) -> Option<String> {
+        self.0.metadata.clone().map(|x| x.to_string())
+    }
+}
+
+struct_boilerplate!(Idl);
+debug_display!(Idl);
+
 #[pymodule]
 fn anchorpy_core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<IdlTypeSimple>()?;
