@@ -1141,6 +1141,26 @@ fn anchorpy_core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<IdlTypeVec>()?;
     m.add_class::<IdlTypeArray>()?;
     m.add_class::<IdlConst>()?;
+    m.add_class::<IdlField>()?;
+    m.add_class::<IdlTypeDefinitionTyStruct>()?;
+    m.add_class::<EnumFieldsNamed>()?;
+    m.add_class::<EnumFieldsTuple>()?;
+    m.add_class::<IdlEnumVariant>()?;
+    m.add_class::<IdlTypeDefinitionTyEnum>()?;
+    m.add_class::<IdlTypeDefinition>()?;
+    m.add_class::<IdlAccounts>()?;
+    m.add_class::<IdlSeedConst>()?;
+    m.add_class::<IdlSeedArg>()?;
+    m.add_class::<IdlSeedAccount>()?;
+    m.add_class::<IdlPda>()?;
+    m.add_class::<IdlAccount>()?;
+    m.add_class::<IdlInstruction>()?;
+    m.add_class::<IdlState>()?;
+    m.add_class::<IdlEvent>()?;
+    m.add_class::<IdlEventField>()?;
+    m.add_class::<IdlErrorCode>()?;
+    m.add_class::<Idl>()?;
+
     let typing = py.import("typing")?;
     let union = typing.getattr("Union")?;
     let compound_members = vec![
@@ -1158,6 +1178,14 @@ fn anchorpy_core(py: Python, m: &PyModule) -> PyResult<()> {
     m.add(
         "IdlType",
         union.get_item(PyTuple::new(py, idl_type_members))?,
+    )?;
+    let enum_fields_members = vec![
+        EnumFieldsNamed::type_object(py),
+        EnumFieldsTuple::type_object(py),
+    ];
+    m.add(
+        "EnumFields",
+        union.get_item(PyTuple::new(py, enum_fields_members))?,
     )?;
     Ok(())
 }

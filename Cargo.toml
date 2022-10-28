@@ -19,3 +19,4 @@ derive_more = "0.99.17"
 anchor-syn = { git = "https://github.com/coral-xyz/anchor", features = ["idl"], rev = "fa12498" }
 serde = { version = "1.0.147", features = ["derive"] }
 solders = "0.9.3"
+serde_json = "1.0.87"
