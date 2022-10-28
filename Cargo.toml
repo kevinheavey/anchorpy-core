@@ -20,3 +20,4 @@ anchor-syn = { git = "https://github.com/coral-xyz/anchor", features = ["idl"], 
 serde = { version = "1.0.147", features = ["derive"] }
 solders = "0.9.3"
 serde_json = "1.0.87"
+pythonize = "0.17.0"

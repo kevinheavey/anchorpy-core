@@ -1,7 +1,9 @@
 use anchor_syn::idl as anchor_idl;
 use derive_more::{Display, From, Into};
-use pyo3::{prelude::*, types::PyTuple, PyTypeInfo};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple, PyTypeInfo};
+use pythonize::{depythonize, pythonize};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use solders::{
     CommonMethods, PyBytesBincode, PyBytesGeneral, PyFromBytesBincode, PyFromBytesGeneral, PyHash,
     RichcmpEqualityOnly,
@@ -41,6 +43,14 @@ macro_rules! iter_into {
     ($obj:expr) => {
         $obj.into_iter().map(|x| x.into()).collect()
     };
+}
+
+fn to_py_value_err(err: &impl ToString) -> PyErr {
+    PyValueError::new_err(err.to_string())
+}
+
+fn handle_py_value_err<T: Into<P>, E: ToString, P>(res: Result<T, E>) -> PyResult<P> {
+    res.map_or_else(|e| Err(to_py_value_err(&e)), |v| Ok(v.into()))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, Hash)]
@@ -643,12 +653,13 @@ pub struct IdlSeedConst(anchor_idl::IdlSeedConst);
 #[pymethods]
 impl IdlSeedConst {
     #[new]
-    fn new(ty: IdlType, value: String) -> Self {
-        anchor_idl::IdlSeedConst {
+    fn new(ty: IdlType, value: &PyAny) -> PyResult<Self> {
+        let parsed_val = handle_py_value_err(depythonize::<Value>(value))?;
+        Ok(anchor_idl::IdlSeedConst {
             ty: ty.into(),
-            value: value.into(),
+            value: parsed_val,
         }
-        .into()
+        .into())
     }
 
     #[getter]
@@ -657,8 +668,8 @@ impl IdlSeedConst {
     }
 
     #[getter]
-    pub fn value(&self) -> String {
-        self.0.value.clone().to_string()
+    pub fn value(&self, py: Python<'_>) -> PyResult<PyObject> {
+        handle_py_value_err(pythonize(py, &self.0.value))
     }
 }
 
@@ -1055,7 +1066,7 @@ pub struct Idl(anchor_idl::Idl);
 impl Idl {
     #[allow(clippy::too_many_arguments)]
     #[new]
-    fn new(
+    pub fn new(
         version: String,
         name: String,
         docs: Option<Vec<String>>,
@@ -1066,9 +1077,10 @@ impl Idl {
         types: Vec<IdlTypeDefinition>,
         events: Option<Vec<IdlEvent>>,
         errors: Option<Vec<IdlErrorCode>>,
-        metadata: Option<String>,
-    ) -> Self {
-        anchor_idl::Idl {
+        metadata: &PyAny,
+    ) -> PyResult<Self> {
+        let parsed_metadata = handle_py_value_err(depythonize::<Value>(metadata))?;
+        Ok(anchor_idl::Idl {
             version,
             name,
             docs,
@@ -1079,9 +1091,9 @@ impl Idl {
             types: iter_into!(types),
             events: events.map(|x| iter_into!(x)),
             errors: errors.map(|x| iter_into!(x)),
-            metadata: metadata.map(|x| x.into()),
+            metadata: parsed_metadata,
         }
-        .into()
+        .into())
     }
 
     #[getter]
@@ -1125,8 +1137,8 @@ impl Idl {
         self.0.errors.clone().map(|x| iter_into!(x))
     }
     #[getter]
-    pub fn metadata(&self) -> Option<String> {
-        self.0.metadata.clone().map(|x| x.to_string())
+    pub fn metadata(&self, py: Python<'_>) -> PyResult<PyObject> {
+        handle_py_value_err(pythonize(py, &self.0.metadata))
     }
 }
 
