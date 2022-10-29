@@ -1,5 +1,5 @@
 test:
-	pytest && make doctest
+	pytest
 
 lint:
 	flake8 && mypy .
