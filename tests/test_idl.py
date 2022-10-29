@@ -1,6 +1,12 @@
-from anchorpy_core.idl import Idl, IdlField, IdlAccount, IdlTypeSimple, IdlErrorCode, IdlTypeDefinitionTyStruct
+from anchorpy_core.idl import (
+    Idl,
+    IdlField,
+    IdlAccount,
+    IdlTypeSimple,
+    IdlErrorCode,
+    IdlTypeDefinitionTyStruct,
+)
 
-import json
 from pathlib import Path
 
 
@@ -11,6 +17,7 @@ def test_idls() -> None:
         idl = Idl.from_json(raw)
         idls.append(idl)
     assert idls
+
 
 def test_clientgen_example() -> None:
     path = Path("tests/idls/clientgen_example_program.json")
@@ -27,7 +34,9 @@ def test_clientgen_example() -> None:
     first_arg = second_ix.args[0]
     assert first_arg == IdlField(name="boolField", docs=None, ty=IdlTypeSimple.Bool)
     first_acc_for_ix = second_ix.accounts[0]
-    assert first_acc_for_ix == IdlAccount(name="state", is_mut=True, is_signer=True, docs=None, pda=None, relations=[])
+    assert first_acc_for_ix == IdlAccount(
+        name="state", is_mut=True, is_signer=True, docs=None, pda=None, relations=[]
+    )
     assert idl.state is None
     first_acc = idl.accounts[0]
     assert first_acc.name == "State"
@@ -35,12 +44,23 @@ def test_clientgen_example() -> None:
     first_acc_ty = first_acc.ty
     assert first_acc_ty
     assert isinstance(first_acc_ty, IdlTypeDefinitionTyStruct)
-    assert first_acc_ty.fields[0] == IdlField(name="boolField", docs=None, ty=IdlTypeSimple.Bool)
+    assert first_acc_ty.fields[0] == IdlField(
+        name="boolField", docs=None, ty=IdlTypeSimple.Bool
+    )
     first_type = idl.types[0]
     assert first_type.name == "BarStruct"
     assert first_type.docs is None
     first_type_ty = first_type.ty
-    assert first_type_ty.fields[0] == IdlField(name="someField", docs=None, ty=IdlTypeSimple.Bool)
+    assert isinstance(first_type_ty, IdlTypeDefinitionTyStruct)
+    first_type_fields = first_type_ty.fields
+    assert first_type_fields is not None
+    first_field = first_type_fields[0]
+    assert first_field == IdlField(
+        name="someField", docs=None, ty=IdlTypeSimple.Bool
+    )
     assert idl.events is None
-    assert idl.errors[0] == IdlErrorCode(code=6000, name="SomeError", msg="Example error.")
+    assert idl.errors is not None
+    assert idl.errors[0] == IdlErrorCode(
+        code=6000, name="SomeError", msg="Example error."
+    )
     assert idl.metadata is None
