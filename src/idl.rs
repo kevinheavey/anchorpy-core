@@ -917,6 +917,11 @@ impl IdlInstruction {
     }
 
     #[getter]
+    pub fn args(&self) -> Vec<IdlField> {
+        iter_into!(self.0.args.clone())
+    }
+
+    #[getter]
     pub fn returns(&self) -> Option<IdlType> {
         self.0.returns.clone().map(|x| x.into())
     }
