@@ -15,6 +15,7 @@ mypy = "^0.982"
 pytest = "^7.2.0"
 flake8 = "^5.0.4"
 bump2version = "^1.0.1"
+jsonalias = "^0.1.1"
 
 [tool.mypy]
 enable_recursive_aliases = true
