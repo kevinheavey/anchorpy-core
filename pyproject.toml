@@ -40,3 +40,6 @@ homepage = "https://github.com/kevinheavey/anchorpy-core"
 documentation = "https://kevinheavey.github.io/anchorpy-core/"
 repository = "https://github.com/kevinheavey/anchorpy-core"
 changelog = "https://github.com/kevinheavey/anchorpy-core/blob/main/CHANGELOG.md"
+
+[tool.maturin]
+python-source = "python"
