@@ -282,7 +282,7 @@ pub struct IdlConst(anchor_idl::IdlConst);
 #[pymethods]
 impl IdlConst {
     #[new]
-    fn new(name: String, ty: IdlType, value: String) -> Self {
+    pub fn new(name: String, ty: IdlType, value: String) -> Self {
         anchor_idl::IdlConst {
             name,
             ty: ty.into(),
@@ -319,7 +319,7 @@ pub struct IdlField(anchor_idl::IdlField);
 #[pymethods]
 impl IdlField {
     #[new]
-    fn new(name: String, docs: Option<Vec<String>>, ty: IdlType) -> Self {
+    pub fn new(name: String, docs: Option<Vec<String>>, ty: IdlType) -> Self {
         anchor_idl::IdlField {
             name,
             docs,
@@ -356,7 +356,7 @@ pub struct IdlTypeDefinitionTyStruct(Vec<IdlField>);
 #[pymethods]
 impl IdlTypeDefinitionTyStruct {
     #[new]
-    fn new(fields: Vec<IdlField>) -> Self {
+    pub fn new(fields: Vec<IdlField>) -> Self {
         fields.into()
     }
 
@@ -378,7 +378,7 @@ pub struct EnumFieldsNamed(Vec<IdlField>);
 #[pymethods]
 impl EnumFieldsNamed {
     #[new]
-    fn new(fields: Vec<IdlField>) -> Self {
+    pub fn new(fields: Vec<IdlField>) -> Self {
         fields.into()
     }
 
@@ -400,7 +400,7 @@ pub struct EnumFieldsTuple(Vec<IdlType>);
 #[pymethods]
 impl EnumFieldsTuple {
     #[new]
-    fn new(fields: Vec<IdlType>) -> Self {
+    pub fn new(fields: Vec<IdlType>) -> Self {
         fields.into()
     }
 
@@ -456,7 +456,7 @@ pub struct IdlEnumVariant(anchor_idl::IdlEnumVariant);
 #[pymethods]
 impl IdlEnumVariant {
     #[new]
-    fn new(name: String, fields: Option<EnumFields>) -> Self {
+    pub fn new(name: String, fields: Option<EnumFields>) -> Self {
         anchor_idl::IdlEnumVariant {
             name,
             fields: fields.map(|f| f.into()),
@@ -487,7 +487,7 @@ pub struct IdlTypeDefinitionTyEnum(Vec<IdlEnumVariant>);
 #[pymethods]
 impl IdlTypeDefinitionTyEnum {
     #[new]
-    fn new(variants: Vec<IdlEnumVariant>) -> Self {
+    pub fn new(variants: Vec<IdlEnumVariant>) -> Self {
         variants.into()
     }
 
@@ -551,7 +551,7 @@ pub struct IdlTypeDefinition(anchor_idl::IdlTypeDefinition);
 #[pymethods]
 impl IdlTypeDefinition {
     #[new]
-    fn new(name: String, docs: Option<Vec<String>>, ty: IdlTypeDefinitionTy) -> Self {
+    pub fn new(name: String, docs: Option<Vec<String>>, ty: IdlTypeDefinitionTy) -> Self {
         anchor_idl::IdlTypeDefinition {
             name,
             docs,
@@ -622,7 +622,7 @@ pub struct IdlAccounts(anchor_idl::IdlAccounts);
 #[pymethods]
 impl IdlAccounts {
     #[new]
-    fn new(name: String, accounts: Vec<IdlAccountItem>) -> Self {
+    pub fn new(name: String, accounts: Vec<IdlAccountItem>) -> Self {
         anchor_idl::IdlAccounts {
             name,
             accounts: iter_into!(accounts),
@@ -653,7 +653,7 @@ pub struct IdlSeedConst(anchor_idl::IdlSeedConst);
 #[pymethods]
 impl IdlSeedConst {
     #[new]
-    fn new(ty: IdlType, value: &PyAny) -> PyResult<Self> {
+    pub fn new(ty: IdlType, value: &PyAny) -> PyResult<Self> {
         let parsed_val = handle_py_value_err(depythonize::<Value>(value))?;
         Ok(anchor_idl::IdlSeedConst {
             ty: ty.into(),
@@ -685,7 +685,7 @@ pub struct IdlSeedArg(anchor_idl::IdlSeedArg);
 #[pymethods]
 impl IdlSeedArg {
     #[new]
-    fn new(ty: IdlType, path: String) -> Self {
+    pub fn new(ty: IdlType, path: String) -> Self {
         anchor_idl::IdlSeedArg {
             ty: ty.into(),
             path,
@@ -716,7 +716,7 @@ pub struct IdlSeedAccount(anchor_idl::IdlSeedAccount);
 #[pymethods]
 impl IdlSeedAccount {
     #[new]
-    fn new(ty: IdlType, account: Option<String>, path: String) -> Self {
+    pub fn new(ty: IdlType, account: Option<String>, path: String) -> Self {
         anchor_idl::IdlSeedAccount {
             ty: ty.into(),
             account,
@@ -791,7 +791,7 @@ pub struct IdlPda(anchor_idl::IdlPda);
 #[pymethods]
 impl IdlPda {
     #[new]
-    fn new(seeds: Vec<IdlSeed>, program_id: Option<IdlSeed>) -> Self {
+    pub fn new(seeds: Vec<IdlSeed>, program_id: Option<IdlSeed>) -> Self {
         anchor_idl::IdlPda {
             seeds: iter_into!(seeds),
             program_id: program_id.map(|x| x.into()),
@@ -822,7 +822,7 @@ pub struct IdlAccount(anchor_idl::IdlAccount);
 #[pymethods]
 impl IdlAccount {
     #[new]
-    fn new(
+    pub fn new(
         name: String,
         is_mut: bool,
         is_signer: bool,
@@ -884,7 +884,7 @@ pub struct IdlInstruction(anchor_idl::IdlInstruction);
 #[pymethods]
 impl IdlInstruction {
     #[new]
-    fn new(
+    pub fn new(
         name: String,
         docs: Option<Vec<String>>,
         accounts: Vec<IdlAccountItem>,
@@ -934,7 +934,7 @@ pub struct IdlState(anchor_idl::IdlState);
 #[pymethods]
 impl IdlState {
     #[new]
-    fn new(strct: IdlTypeDefinition, methods: Vec<IdlInstruction>) -> Self {
+    pub fn new(strct: IdlTypeDefinition, methods: Vec<IdlInstruction>) -> Self {
         anchor_idl::IdlState {
             strct: strct.into(),
             methods: iter_into!(methods),
@@ -965,7 +965,7 @@ pub struct IdlEvent(anchor_idl::IdlEvent);
 #[pymethods]
 impl IdlEvent {
     #[new]
-    fn new(name: String, fields: Vec<IdlEventField>) -> Self {
+    pub fn new(name: String, fields: Vec<IdlEventField>) -> Self {
         anchor_idl::IdlEvent {
             name,
             fields: iter_into!(fields),
@@ -996,7 +996,7 @@ pub struct IdlEventField(anchor_idl::IdlEventField);
 #[pymethods]
 impl IdlEventField {
     #[new]
-    fn new(name: String, ty: IdlType, index: bool) -> Self {
+    pub fn new(name: String, ty: IdlType, index: bool) -> Self {
         anchor_idl::IdlEventField {
             name,
             ty: ty.into(),
@@ -1033,7 +1033,7 @@ pub struct IdlErrorCode(anchor_idl::IdlErrorCode);
 #[pymethods]
 impl IdlErrorCode {
     #[new]
-    fn new(code: u32, name: String, msg: Option<String>) -> Self {
+    pub fn new(code: u32, name: String, msg: Option<String>) -> Self {
         anchor_idl::IdlErrorCode { code, name, msg }.into()
     }
 
