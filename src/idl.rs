@@ -4,11 +4,11 @@ use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple, PyTypeInfo};
 use pythonize::{depythonize, pythonize};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use solders::{
+use solders_macros::{common_methods, pyhash, richcmp_eq_only};
+use solders_traits::{
     CommonMethods, PyBytesBincode, PyBytesGeneral, PyFromBytesBincode, PyFromBytesGeneral, PyHash,
     RichcmpEqualityOnly,
 };
-use solders_macros::{common_methods, pyhash, richcmp_eq_only};
 
 macro_rules! struct_boilerplate {
     ($name:ident) => {
