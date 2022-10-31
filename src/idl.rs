@@ -97,6 +97,12 @@ impl From<IdlTypeSimple> for anchor_idl::IdlType {
     }
 }
 
+impl PyHash for IdlTypeSimple {}
+
+#[pyhash]
+#[pymethods]
+impl IdlTypeSimple {}
+
 #[derive(Debug, Clone, PartialEq, Eq, From, Into, Serialize, Deserialize, Hash, Display)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
 pub struct IdlTypeDefined(String);
