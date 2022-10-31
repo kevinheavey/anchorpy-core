@@ -9,6 +9,7 @@ from anchorpy_core.idl import (
 
 from pathlib import Path
 
+
 def test_idl_type_simple_hash() -> None:
     assert isinstance(hash(IdlTypeSimple.Bool), int)
 
