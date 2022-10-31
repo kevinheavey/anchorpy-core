@@ -1186,6 +1186,28 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
 
     let typing = py.import("typing")?;
     let union = typing.getattr("Union")?;
+    let idl_account_item_members = vec![IdlAccount::type_object(py), IdlAccounts::type_object(py)];
+    m.add(
+        "IdlAccountItem",
+        union.get_item(PyTuple::new(py, idl_account_item_members))?,
+    )?;
+    let idl_type_definition_ty_members = vec![
+        IdlTypeDefinitionTyStruct::type_object(py),
+        IdlTypeDefinitionTyEnum::type_object(py),
+    ];
+    m.add(
+        "IdlTypeDefinitionTy",
+        union.get_item(PyTuple::new(py, idl_type_definition_ty_members))?,
+    )?;
+    let idl_seed_members = vec![
+        IdlSeedConst::type_object(py),
+        IdlSeedArg::type_object(py),
+        IdlSeedAccount::type_object(py),
+    ];
+    m.add(
+        "IdlSeed",
+        union.get_item(PyTuple::new(py, idl_seed_members))?,
+    )?;
     let compound_members = vec![
         IdlTypeDefined::type_object(py),
         IdlTypeOption::type_object(py),
