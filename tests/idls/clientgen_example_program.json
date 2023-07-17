@@ -174,10 +174,7 @@
         {
           "name": "arrayField",
           "type": {
-            "array": [
-              "bool",
-              3
-            ]
+            "array": ["bool", 3]
           }
         },
         {
@@ -235,6 +232,28 @@
           }
         }
       ]
+    },
+    {
+      "name": "incrementStateWhenPresent",
+      "accounts": [
+        {
+          "name": "firstState",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "secondState",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "causeError",
@@ -349,10 +368,7 @@
           {
             "name": "arrayField",
             "type": {
-              "array": [
-                "bool",
-                3
-              ]
+              "array": ["bool", 3]
             }
           },
           {

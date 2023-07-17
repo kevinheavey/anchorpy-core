@@ -1,6 +1,6 @@
 [package]
 name = "anchorpy_core"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 include = ["/src", "/LICENSE", "/pyproject.toml"]
 description = "Python bindings for Anchor Rust code"
@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "0.17.2", features = ["extension-module", "abi3-py37"] }
 solders-macros = "0.6.0"
 derive_more = "0.99.17"
-anchor-syn = { git = "https://github.com/coral-xyz/anchor", features = ["idl"], rev = "fa12498" }
+anchor-syn = { git = "https://github.com/coral-xyz/anchor", features = ["idl"], rev = "347c225" }
 serde = { version = "1.0.147", features = ["derive"] }
 solders-traits = "0.9.3"
 serde_json = "1.0.87"
