@@ -69,6 +69,8 @@ pub enum IdlTypeSimple {
     F64,
     U128,
     I128,
+    U256,
+    I256,
     Bytes,
     String,
     PublicKey,
@@ -90,6 +92,8 @@ impl From<IdlTypeSimple> for anchor_idl::IdlType {
             IdlTypeSimple::F64 => Self::F64,
             IdlTypeSimple::U128 => Self::U128,
             IdlTypeSimple::I128 => Self::I128,
+            IdlTypeSimple::U256 => Self::U256,
+            IdlTypeSimple::I256 => Self::I256,
             IdlTypeSimple::Bytes => Self::Bytes,
             IdlTypeSimple::String => Self::String,
             IdlTypeSimple::PublicKey => Self::PublicKey,
@@ -251,6 +255,8 @@ impl From<anchor_idl::IdlType> for IdlType {
             anchor_idl::IdlType::F64 => Self::Simple(IdlTypeSimple::F64),
             anchor_idl::IdlType::U128 => Self::Simple(IdlTypeSimple::U128),
             anchor_idl::IdlType::I128 => Self::Simple(IdlTypeSimple::I128),
+            anchor_idl::IdlType::U256 => Self::Simple(IdlTypeSimple::U256),
+            anchor_idl::IdlType::I256 => Self::Simple(IdlTypeSimple::I256),
             anchor_idl::IdlType::Bytes => Self::Simple(IdlTypeSimple::Bytes),
             anchor_idl::IdlType::String => Self::Simple(IdlTypeSimple::String),
             anchor_idl::IdlType::PublicKey => Self::Simple(IdlTypeSimple::PublicKey),
@@ -832,6 +838,7 @@ impl IdlAccount {
         name: String,
         is_mut: bool,
         is_signer: bool,
+        is_optional: Option<bool>,
         docs: Option<Vec<String>>,
         pda: Option<IdlPda>,
         relations: Vec<String>,
@@ -840,6 +847,7 @@ impl IdlAccount {
             name,
             is_mut,
             is_signer,
+            is_optional,
             docs,
             pda: pda.map(|x| x.into()),
             relations,
@@ -860,6 +868,11 @@ impl IdlAccount {
     #[getter]
     pub fn is_signer(&self) -> bool {
         self.0.is_signer
+    }
+
+    #[getter]
+    pub fn is_optional(&self) -> Option<bool> {
+        self.0.is_optional
     }
 
     #[getter]

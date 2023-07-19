@@ -15,6 +15,8 @@ class IdlTypeSimple:
     F64: "IdlTypeSimple"
     U128: "IdlTypeSimple"
     I128: "IdlTypeSimple"
+    U256: "IdlTypeSimple"
+    I256: "IdlTypeSimple"
     Bytes: "IdlTypeSimple"
     String: "IdlTypeSimple"
     PublicKey: "IdlTypeSimple"
@@ -309,6 +311,7 @@ class IdlAccount:
         name: str,
         is_mut: bool,
         is_signer: bool,
+        is_optional: Optional[bool],
         docs: Optional[Sequence[str]],
         pda: Optional[IdlPda],
         relations: Sequence[str],
@@ -319,6 +322,8 @@ class IdlAccount:
     def is_mut(self) -> bool: ...
     @property
     def is_signer(self) -> bool: ...
+    @property
+    def is_optional(self) -> Optional[bool]: ...
     @property
     def docs(self) -> Optional[List[str]]: ...
     @property

@@ -39,7 +39,25 @@ def test_clientgen_example() -> None:
     assert first_arg == IdlField(name="boolField", docs=None, ty=IdlTypeSimple.Bool)
     first_acc_for_ix = second_ix.accounts[0]
     assert first_acc_for_ix == IdlAccount(
-        name="state", is_mut=True, is_signer=True, docs=None, pda=None, relations=[]
+        name="state",
+        is_mut=True,
+        is_signer=True,
+        is_optional=None,
+        docs=None,
+        pda=None,
+        relations=[],
+    )
+    fourth_ix = idl.instructions[3]
+    assert fourth_ix.name == "incrementStateWhenPresent"
+    first_acc_for_ix = fourth_ix.accounts[0]
+    assert first_acc_for_ix == IdlAccount(
+        name="firstState",
+        is_mut=True,
+        is_signer=False,
+        is_optional=True,
+        docs=None,
+        pda=None,
+        relations=[],
     )
     assert idl.state is None
     first_acc = idl.accounts[0]
@@ -59,9 +77,7 @@ def test_clientgen_example() -> None:
     first_type_fields = first_type_ty.fields
     assert first_type_fields is not None
     first_field = first_type_fields[0]
-    assert first_field == IdlField(
-        name="someField", docs=None, ty=IdlTypeSimple.Bool
-    )
+    assert first_field == IdlField(name="someField", docs=None, ty=IdlTypeSimple.Bool)
     assert idl.events is None
     assert idl.errors is not None
     assert idl.errors[0] == IdlErrorCode(
