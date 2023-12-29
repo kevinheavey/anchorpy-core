@@ -537,6 +537,8 @@ IdlTypeCompound = Union[
     IdlTypeOption,
     IdlTypeVec,
     IdlTypeArray,
+    IdlTypeDefinedWithTypeArgs,
+    IdlTypeGenericLenArray,
 ]
 IdlType = Union[IdlTypeCompound, IdlTypeSimple]
 EnumFields = Union[EnumFieldsNamed, EnumFieldsTuple]

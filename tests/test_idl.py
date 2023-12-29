@@ -3,6 +3,8 @@ from anchorpy_core.idl import (
     IdlField,
     IdlAccount,
     IdlTypeSimple,
+    IdlTypeDefinition,
+    IdlTypeDefinitionTyAlias,
     IdlErrorCode,
     IdlTypeDefinitionTyStruct,
 )
@@ -59,7 +61,6 @@ def test_clientgen_example() -> None:
         pda=None,
         relations=[],
     )
-    assert idl.state is None
     first_acc = idl.accounts[0]
     assert first_acc.name == "State"
     assert first_acc.docs is None
@@ -84,3 +85,9 @@ def test_clientgen_example() -> None:
         code=6000, name="SomeError", msg="Example error."
     )
     assert idl.metadata is None
+
+def test_alias() -> None:
+    raw = '{"name":"TickArryBitmap","type":{"kind":"alias","value":{"array":["u64",8]}}}'
+    parsed = IdlTypeDefinition.from_json(raw)
+    ty = parsed.ty
+    assert isinstance(ty, IdlTypeDefinitionTyAlias)

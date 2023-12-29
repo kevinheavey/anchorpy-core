@@ -519,6 +519,28 @@ debug_display!(IdlTypeDefinitionTyStruct);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeDefinitionTyAlias(IdlType);
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pymethods]
+impl IdlTypeDefinitionTyAlias {
+    #[new]
+    pub fn new(value: IdlType) -> Self {
+        Self(value)
+    }
+
+    #[getter]
+    pub fn value(&self) -> IdlType {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(IdlTypeDefinitionTyAlias);
+debug_display!(IdlTypeDefinitionTyAlias);
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
 pub struct EnumFieldsNamed(Vec<IdlField>);
 
 #[richcmp_eq_only]
@@ -653,7 +675,7 @@ debug_display!(IdlTypeDefinitionTyEnum);
 pub enum IdlTypeDefinitionTy {
     Struct(IdlTypeDefinitionTyStruct),
     Enum(IdlTypeDefinitionTyEnum),
-    Alias(IdlType),
+    Alias(IdlTypeDefinitionTyAlias),
 }
 
 impl From<IdlTypeDefinitionTy> for anchor_idl::types::IdlTypeDefinitionTy {
@@ -665,7 +687,7 @@ impl From<IdlTypeDefinitionTy> for anchor_idl::types::IdlTypeDefinitionTy {
             IdlTypeDefinitionTy::Enum(e) => Self::Enum {
                 variants: iter_into!(e.0),
             },
-            IdlTypeDefinitionTy::Alias(a) => Self::Alias { value: a.into() },
+            IdlTypeDefinitionTy::Alias(a) => Self::Alias { value: a.0.into() },
         }
     }
 }
@@ -679,7 +701,9 @@ impl From<anchor_idl::types::IdlTypeDefinitionTy> for IdlTypeDefinitionTy {
             anchor_idl::types::IdlTypeDefinitionTy::Enum { variants } => {
                 Self::Enum(IdlTypeDefinitionTyEnum(iter_into!(variants)))
             }
-            anchor_idl::types::IdlTypeDefinitionTy::Alias { value } => Self::Alias(value.into()),
+            anchor_idl::types::IdlTypeDefinitionTy::Alias { value } => {
+                Self::Alias(IdlTypeDefinitionTyAlias(value.into()))
+            }
         }
     }
 }
@@ -1369,6 +1393,8 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
         IdlTypeOption::type_object(py),
         IdlTypeVec::type_object(py),
         IdlTypeArray::type_object(py),
+        IdlTypeDefinedWithTypeArgs::type_object(py),
+        IdlTypeGenericLenArray::type_object(py),
     ];
     m.add(
         "IdlTypeCompound",
