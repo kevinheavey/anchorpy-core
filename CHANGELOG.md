@@ -1,10 +1,16 @@
 # Changelog
 
+## [0.2.0] - 2023-12-29
+
+### Changed
+
+- Update to Anchor v0.29 [(#2)](https://github.com/kevinheavey/anchorpy-core/pull/2)
+
 ## [0.1.3] - 2023-07-20
 
 ### Added
 
-- Update to anchor v0.26 to surface is_optional
+- Update to Anchor v0.26 to surface is_optional [(#1)](https://github.com/kevinheavey/anchorpy-core/pull/1)
 
 ## [0.1.2] - 2022-10-31
 
