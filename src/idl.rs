@@ -1,6 +1,11 @@
 use anchor_syn::idl as anchor_idl;
 use derive_more::{Display, From, Into};
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple, PyTypeInfo};
+use pyo3::{
+    exceptions::PyValueError,
+    prelude::*,
+    types::{PyString, PyTuple},
+    PyTypeInfo,
+};
 use pythonize::{depythonize, pythonize};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -76,7 +81,7 @@ pub enum IdlTypeSimple {
     PublicKey,
 }
 
-impl From<IdlTypeSimple> for anchor_idl::IdlType {
+impl From<IdlTypeSimple> for anchor_idl::types::IdlType {
     fn from(t: IdlTypeSimple) -> Self {
         match t {
             IdlTypeSimple::Bool => Self::Bool,
@@ -130,6 +135,89 @@ impl IdlTypeDefined {
 }
 
 struct_boilerplate!(IdlTypeDefined);
+
+#[derive(Debug, Clone, PartialEq, Eq, From, Into, Serialize, Deserialize, Hash, Display)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeGeneric(String);
+
+impl PyHash for IdlTypeGeneric {}
+
+#[richcmp_eq_only]
+#[common_methods]
+#[pyhash]
+#[pymethods]
+impl IdlTypeGeneric {
+    #[new]
+    pub fn new(generic: String) -> Self {
+        generic.into()
+    }
+
+    #[getter]
+    pub fn generic(&self) -> String {
+        self.0.clone()
+    }
+}
+
+struct_boilerplate!(IdlTypeGeneric);
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, FromPyObject)]
+#[serde(rename_all = "camelCase")]
+pub enum IdlDefinedTypeArg {
+    Generic(IdlTypeGeneric),
+    Value(String),
+    Type(IdlType),
+}
+
+impl IntoPy<PyObject> for IdlDefinedTypeArg {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            Self::Generic(s) => s.into_py(py),
+            Self::Value(v) => v.into_py(py),
+            Self::Type(t) => t.into_py(py),
+        }
+    }
+}
+
+impl From<IdlDefinedTypeArg> for anchor_idl::types::IdlDefinedTypeArg {
+    fn from(value: IdlDefinedTypeArg) -> Self {
+        match value {
+            IdlDefinedTypeArg::Generic(s) => Self::Generic(s.0),
+            IdlDefinedTypeArg::Value(s) => Self::Value(s),
+            IdlDefinedTypeArg::Type(t) => Self::Type(t.into()),
+        }
+    }
+}
+
+impl From<anchor_idl::types::IdlDefinedTypeArg> for IdlDefinedTypeArg {
+    fn from(value: anchor_idl::types::IdlDefinedTypeArg) -> Self {
+        match value {
+            anchor_idl::types::IdlDefinedTypeArg::Generic(s) => Self::Generic(IdlTypeGeneric(s)),
+            anchor_idl::types::IdlDefinedTypeArg::Value(s) => Self::Value(s),
+            anchor_idl::types::IdlDefinedTypeArg::Type(t) => Self::Type(t.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeDefinedWithTypeArgs {
+    #[pyo3(get)]
+    name: String,
+    #[pyo3(get)]
+    args: Vec<IdlDefinedTypeArg>,
+}
+
+debug_display!(IdlTypeDefinedWithTypeArgs);
+
+#[pymethods]
+impl IdlTypeDefinedWithTypeArgs {
+    #[new]
+    pub fn new(name: String, args: Vec<IdlDefinedTypeArg>) -> Self {
+        Self { name, args }
+    }
+}
+
+struct_boilerplate!(IdlTypeDefinedWithTypeArgs);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
@@ -192,6 +280,26 @@ impl IdlTypeArray {
 struct_boilerplate!(IdlTypeArray);
 debug_display!(IdlTypeArray);
 
+#[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
+#[pyclass(module = "anchorpy_core.idl", subclass)]
+pub struct IdlTypeGenericLenArray(Box<IdlType>, String);
+
+#[pymethods]
+impl IdlTypeGenericLenArray {
+    #[new]
+    pub fn new(generic_len_array: (IdlType, String)) -> Self {
+        Self(generic_len_array.0.into(), generic_len_array.1)
+    }
+
+    #[getter]
+    pub fn generic_len_array(&self) -> (IdlType, String) {
+        (*self.0.clone(), self.1.clone())
+    }
+}
+
+struct_boilerplate!(IdlTypeGenericLenArray);
+debug_display!(IdlTypeGenericLenArray);
+
 #[derive(Debug, Clone, PartialEq, FromPyObject, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum IdlTypeCompound {
@@ -199,15 +307,26 @@ pub enum IdlTypeCompound {
     Option(IdlTypeOption),
     Vec(IdlTypeVec),
     Array(IdlTypeArray),
+    GenericLenArray(IdlTypeGenericLenArray),
+    Generic(IdlTypeGeneric),
+    DefinedWithTypeArgs(IdlTypeDefinedWithTypeArgs),
 }
 
-impl From<IdlTypeCompound> for anchor_idl::IdlType {
+impl From<IdlTypeCompound> for anchor_idl::types::IdlType {
     fn from(t: IdlTypeCompound) -> Self {
         match t {
             IdlTypeCompound::Defined(d) => Self::Defined(d.0),
             IdlTypeCompound::Option(o) => Self::Option(Box::new(Self::from(*o.0))),
             IdlTypeCompound::Vec(v) => Self::Vec(Box::new(Self::from(*v.0))),
             IdlTypeCompound::Array(a) => Self::Array(Box::new(Self::from(*a.0)), a.1),
+            IdlTypeCompound::GenericLenArray(g) => {
+                Self::GenericLenArray(Box::new(Self::from(*g.0)), g.1)
+            }
+            IdlTypeCompound::Generic(g) => Self::Generic(g.0),
+            IdlTypeCompound::DefinedWithTypeArgs(d) => Self::DefinedWithTypeArgs {
+                name: d.name,
+                args: iter_into!(d.args),
+            },
         }
     }
 }
@@ -219,6 +338,9 @@ impl IntoPy<PyObject> for IdlTypeCompound {
             IdlTypeCompound::Option(x) => x.into_py(py),
             IdlTypeCompound::Vec(x) => x.into_py(py),
             IdlTypeCompound::Array(x) => x.into_py(py),
+            IdlTypeCompound::GenericLenArray(x) => x.into_py(py),
+            IdlTypeCompound::Generic(x) => x.into_py(py),
+            IdlTypeCompound::DefinedWithTypeArgs(x) => x.into_py(py),
         }
     }
 }
@@ -239,44 +361,58 @@ impl IntoPy<PyObject> for IdlType {
     }
 }
 
-impl From<anchor_idl::IdlType> for IdlType {
-    fn from(t: anchor_idl::IdlType) -> Self {
+impl From<anchor_idl::types::IdlType> for IdlType {
+    fn from(t: anchor_idl::types::IdlType) -> Self {
         match t {
-            anchor_idl::IdlType::Bool => Self::Simple(IdlTypeSimple::Bool),
-            anchor_idl::IdlType::U8 => Self::Simple(IdlTypeSimple::U8),
-            anchor_idl::IdlType::I8 => Self::Simple(IdlTypeSimple::I8),
-            anchor_idl::IdlType::U16 => Self::Simple(IdlTypeSimple::U16),
-            anchor_idl::IdlType::I16 => Self::Simple(IdlTypeSimple::I16),
-            anchor_idl::IdlType::U32 => Self::Simple(IdlTypeSimple::U32),
-            anchor_idl::IdlType::I32 => Self::Simple(IdlTypeSimple::I32),
-            anchor_idl::IdlType::F32 => Self::Simple(IdlTypeSimple::F32),
-            anchor_idl::IdlType::U64 => Self::Simple(IdlTypeSimple::U64),
-            anchor_idl::IdlType::I64 => Self::Simple(IdlTypeSimple::I64),
-            anchor_idl::IdlType::F64 => Self::Simple(IdlTypeSimple::F64),
-            anchor_idl::IdlType::U128 => Self::Simple(IdlTypeSimple::U128),
-            anchor_idl::IdlType::I128 => Self::Simple(IdlTypeSimple::I128),
-            anchor_idl::IdlType::U256 => Self::Simple(IdlTypeSimple::U256),
-            anchor_idl::IdlType::I256 => Self::Simple(IdlTypeSimple::I256),
-            anchor_idl::IdlType::Bytes => Self::Simple(IdlTypeSimple::Bytes),
-            anchor_idl::IdlType::String => Self::Simple(IdlTypeSimple::String),
-            anchor_idl::IdlType::PublicKey => Self::Simple(IdlTypeSimple::PublicKey),
-            anchor_idl::IdlType::Defined(d) => {
+            anchor_idl::types::IdlType::Bool => Self::Simple(IdlTypeSimple::Bool),
+            anchor_idl::types::IdlType::U8 => Self::Simple(IdlTypeSimple::U8),
+            anchor_idl::types::IdlType::I8 => Self::Simple(IdlTypeSimple::I8),
+            anchor_idl::types::IdlType::U16 => Self::Simple(IdlTypeSimple::U16),
+            anchor_idl::types::IdlType::I16 => Self::Simple(IdlTypeSimple::I16),
+            anchor_idl::types::IdlType::U32 => Self::Simple(IdlTypeSimple::U32),
+            anchor_idl::types::IdlType::I32 => Self::Simple(IdlTypeSimple::I32),
+            anchor_idl::types::IdlType::F32 => Self::Simple(IdlTypeSimple::F32),
+            anchor_idl::types::IdlType::U64 => Self::Simple(IdlTypeSimple::U64),
+            anchor_idl::types::IdlType::I64 => Self::Simple(IdlTypeSimple::I64),
+            anchor_idl::types::IdlType::F64 => Self::Simple(IdlTypeSimple::F64),
+            anchor_idl::types::IdlType::U128 => Self::Simple(IdlTypeSimple::U128),
+            anchor_idl::types::IdlType::I128 => Self::Simple(IdlTypeSimple::I128),
+            anchor_idl::types::IdlType::U256 => Self::Simple(IdlTypeSimple::U256),
+            anchor_idl::types::IdlType::I256 => Self::Simple(IdlTypeSimple::I256),
+            anchor_idl::types::IdlType::Bytes => Self::Simple(IdlTypeSimple::Bytes),
+            anchor_idl::types::IdlType::String => Self::Simple(IdlTypeSimple::String),
+            anchor_idl::types::IdlType::PublicKey => Self::Simple(IdlTypeSimple::PublicKey),
+            anchor_idl::types::IdlType::Defined(d) => {
                 Self::Compound(IdlTypeCompound::Defined(IdlTypeDefined(d)))
             }
-            anchor_idl::IdlType::Option(o) => Self::Compound(IdlTypeCompound::Option(
+            anchor_idl::types::IdlType::Option(o) => Self::Compound(IdlTypeCompound::Option(
                 IdlTypeOption(Box::new(IdlType::from(*o))),
             )),
-            anchor_idl::IdlType::Vec(v) => Self::Compound(IdlTypeCompound::Vec(IdlTypeVec(
+            anchor_idl::types::IdlType::Vec(v) => Self::Compound(IdlTypeCompound::Vec(IdlTypeVec(
                 Box::new(IdlType::from(*v)),
             ))),
-            anchor_idl::IdlType::Array(a, size) => Self::Compound(IdlTypeCompound::Array(
+            anchor_idl::types::IdlType::Array(a, size) => Self::Compound(IdlTypeCompound::Array(
                 IdlTypeArray(Box::new(IdlType::from(*a)), size),
             )),
+            anchor_idl::types::IdlType::GenericLenArray(type_, generic) => {
+                Self::Compound(IdlTypeCompound::GenericLenArray(IdlTypeGenericLenArray(
+                    Box::new(IdlType::from(*type_)),
+                    generic,
+                )))
+            }
+            anchor_idl::types::IdlType::Generic(g) => {
+                Self::Compound(IdlTypeCompound::Generic(IdlTypeGeneric(g)))
+            }
+            anchor_idl::types::IdlType::DefinedWithTypeArgs { name, args } => {
+                Self::Compound(IdlTypeCompound::DefinedWithTypeArgs(
+                    IdlTypeDefinedWithTypeArgs::new(name, iter_into!(args)),
+                ))
+            }
         }
     }
 }
 
-impl From<IdlType> for anchor_idl::IdlType {
+impl From<IdlType> for anchor_idl::types::IdlType {
     fn from(t: IdlType) -> Self {
         match t {
             IdlType::Simple(s) => Self::from(s),
@@ -287,7 +423,7 @@ impl From<IdlType> for anchor_idl::IdlType {
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlConst(anchor_idl::IdlConst);
+pub struct IdlConst(anchor_idl::types::IdlConst);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -295,7 +431,7 @@ pub struct IdlConst(anchor_idl::IdlConst);
 impl IdlConst {
     #[new]
     pub fn new(name: String, ty: IdlType, value: String) -> Self {
-        anchor_idl::IdlConst {
+        anchor_idl::types::IdlConst {
             name,
             ty: ty.into(),
             value,
@@ -324,7 +460,7 @@ debug_display!(IdlConst);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlField(anchor_idl::IdlField);
+pub struct IdlField(anchor_idl::types::IdlField);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -332,7 +468,7 @@ pub struct IdlField(anchor_idl::IdlField);
 impl IdlField {
     #[new]
     pub fn new(name: String, docs: Option<Vec<String>>, ty: IdlType) -> Self {
-        anchor_idl::IdlField {
+        anchor_idl::types::IdlField {
             name,
             docs,
             ty: ty.into(),
@@ -432,7 +568,7 @@ pub enum EnumFields {
     Tuple(EnumFieldsTuple),
 }
 
-impl From<EnumFields> for anchor_idl::EnumFields {
+impl From<EnumFields> for anchor_idl::types::EnumFields {
     fn from(t: EnumFields) -> Self {
         match t {
             EnumFields::Named(n) => Self::Named(iter_into!(n.0)),
@@ -441,11 +577,11 @@ impl From<EnumFields> for anchor_idl::EnumFields {
     }
 }
 
-impl From<anchor_idl::EnumFields> for EnumFields {
-    fn from(t: anchor_idl::EnumFields) -> Self {
+impl From<anchor_idl::types::EnumFields> for EnumFields {
+    fn from(t: anchor_idl::types::EnumFields) -> Self {
         match t {
-            anchor_idl::EnumFields::Named(n) => Self::Named(EnumFieldsNamed(iter_into!(n))),
-            anchor_idl::EnumFields::Tuple(t) => Self::Tuple(EnumFieldsTuple(iter_into!(t))),
+            anchor_idl::types::EnumFields::Named(n) => Self::Named(EnumFieldsNamed(iter_into!(n))),
+            anchor_idl::types::EnumFields::Tuple(t) => Self::Tuple(EnumFieldsTuple(iter_into!(t))),
         }
     }
 }
@@ -461,7 +597,7 @@ impl IntoPy<PyObject> for EnumFields {
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlEnumVariant(anchor_idl::IdlEnumVariant);
+pub struct IdlEnumVariant(anchor_idl::types::IdlEnumVariant);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -469,7 +605,7 @@ pub struct IdlEnumVariant(anchor_idl::IdlEnumVariant);
 impl IdlEnumVariant {
     #[new]
     pub fn new(name: String, fields: Option<EnumFields>) -> Self {
-        anchor_idl::IdlEnumVariant {
+        anchor_idl::types::IdlEnumVariant {
             name,
             fields: fields.map(|f| f.into()),
         }
@@ -517,9 +653,10 @@ debug_display!(IdlTypeDefinitionTyEnum);
 pub enum IdlTypeDefinitionTy {
     Struct(IdlTypeDefinitionTyStruct),
     Enum(IdlTypeDefinitionTyEnum),
+    Alias(IdlType),
 }
 
-impl From<IdlTypeDefinitionTy> for anchor_idl::IdlTypeDefinitionTy {
+impl From<IdlTypeDefinitionTy> for anchor_idl::types::IdlTypeDefinitionTy {
     fn from(t: IdlTypeDefinitionTy) -> Self {
         match t {
             IdlTypeDefinitionTy::Struct(s) => Self::Struct {
@@ -528,19 +665,21 @@ impl From<IdlTypeDefinitionTy> for anchor_idl::IdlTypeDefinitionTy {
             IdlTypeDefinitionTy::Enum(e) => Self::Enum {
                 variants: iter_into!(e.0),
             },
+            IdlTypeDefinitionTy::Alias(a) => Self::Alias { value: a.into() },
         }
     }
 }
 
-impl From<anchor_idl::IdlTypeDefinitionTy> for IdlTypeDefinitionTy {
-    fn from(t: anchor_idl::IdlTypeDefinitionTy) -> Self {
+impl From<anchor_idl::types::IdlTypeDefinitionTy> for IdlTypeDefinitionTy {
+    fn from(t: anchor_idl::types::IdlTypeDefinitionTy) -> Self {
         match t {
-            anchor_idl::IdlTypeDefinitionTy::Struct { fields } => {
+            anchor_idl::types::IdlTypeDefinitionTy::Struct { fields } => {
                 Self::Struct(IdlTypeDefinitionTyStruct(iter_into!(fields)))
             }
-            anchor_idl::IdlTypeDefinitionTy::Enum { variants } => {
+            anchor_idl::types::IdlTypeDefinitionTy::Enum { variants } => {
                 Self::Enum(IdlTypeDefinitionTyEnum(iter_into!(variants)))
             }
+            anchor_idl::types::IdlTypeDefinitionTy::Alias { value } => Self::Alias(value.into()),
         }
     }
 }
@@ -550,24 +689,31 @@ impl IntoPy<PyObject> for IdlTypeDefinitionTy {
         match self {
             IdlTypeDefinitionTy::Struct(x) => x.into_py(py),
             IdlTypeDefinitionTy::Enum(x) => x.into_py(py),
+            IdlTypeDefinitionTy::Alias(x) => x.into_py(py),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlTypeDefinition(anchor_idl::IdlTypeDefinition);
+pub struct IdlTypeDefinition(anchor_idl::types::IdlTypeDefinition);
 
 #[richcmp_eq_only]
 #[common_methods]
 #[pymethods]
 impl IdlTypeDefinition {
     #[new]
-    pub fn new(name: String, docs: Option<Vec<String>>, ty: IdlTypeDefinitionTy) -> Self {
-        anchor_idl::IdlTypeDefinition {
+    pub fn new(
+        name: String,
+        docs: Option<Vec<String>>,
+        ty: IdlTypeDefinitionTy,
+        generics: Option<Vec<String>>,
+    ) -> Self {
+        anchor_idl::types::IdlTypeDefinition {
             name,
             docs,
             ty: ty.into(),
+            generics,
         }
         .into()
     }
@@ -598,7 +744,7 @@ pub enum IdlAccountItem {
     IdlAccounts(IdlAccounts),
 }
 
-impl From<IdlAccountItem> for anchor_idl::IdlAccountItem {
+impl From<IdlAccountItem> for anchor_idl::types::IdlAccountItem {
     fn from(a: IdlAccountItem) -> Self {
         match a {
             IdlAccountItem::IdlAccount(x) => Self::IdlAccount(x.into()),
@@ -607,11 +753,11 @@ impl From<IdlAccountItem> for anchor_idl::IdlAccountItem {
     }
 }
 
-impl From<anchor_idl::IdlAccountItem> for IdlAccountItem {
-    fn from(a: anchor_idl::IdlAccountItem) -> Self {
+impl From<anchor_idl::types::IdlAccountItem> for IdlAccountItem {
+    fn from(a: anchor_idl::types::IdlAccountItem) -> Self {
         match a {
-            anchor_idl::IdlAccountItem::IdlAccount(x) => Self::IdlAccount(x.into()),
-            anchor_idl::IdlAccountItem::IdlAccounts(x) => Self::IdlAccounts(x.into()),
+            anchor_idl::types::IdlAccountItem::IdlAccount(x) => Self::IdlAccount(x.into()),
+            anchor_idl::types::IdlAccountItem::IdlAccounts(x) => Self::IdlAccounts(x.into()),
         }
     }
 }
@@ -627,7 +773,7 @@ impl IntoPy<PyObject> for IdlAccountItem {
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlAccounts(anchor_idl::IdlAccounts);
+pub struct IdlAccounts(anchor_idl::types::IdlAccounts);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -635,7 +781,7 @@ pub struct IdlAccounts(anchor_idl::IdlAccounts);
 impl IdlAccounts {
     #[new]
     pub fn new(name: String, accounts: Vec<IdlAccountItem>) -> Self {
-        anchor_idl::IdlAccounts {
+        anchor_idl::types::IdlAccounts {
             name,
             accounts: iter_into!(accounts),
         }
@@ -658,7 +804,7 @@ debug_display!(IdlAccounts);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlSeedConst(anchor_idl::IdlSeedConst);
+pub struct IdlSeedConst(anchor_idl::types::IdlSeedConst);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -667,7 +813,7 @@ impl IdlSeedConst {
     #[new]
     pub fn new(ty: IdlType, value: &PyAny) -> PyResult<Self> {
         let parsed_val = handle_py_value_err(depythonize::<Value>(value))?;
-        Ok(anchor_idl::IdlSeedConst {
+        Ok(anchor_idl::types::IdlSeedConst {
             ty: ty.into(),
             value: parsed_val,
         }
@@ -690,7 +836,7 @@ debug_display!(IdlSeedConst);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlSeedArg(anchor_idl::IdlSeedArg);
+pub struct IdlSeedArg(anchor_idl::types::IdlSeedArg);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -698,7 +844,7 @@ pub struct IdlSeedArg(anchor_idl::IdlSeedArg);
 impl IdlSeedArg {
     #[new]
     pub fn new(ty: IdlType, path: String) -> Self {
-        anchor_idl::IdlSeedArg {
+        anchor_idl::types::IdlSeedArg {
             ty: ty.into(),
             path,
         }
@@ -721,7 +867,7 @@ debug_display!(IdlSeedArg);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlSeedAccount(anchor_idl::IdlSeedAccount);
+pub struct IdlSeedAccount(anchor_idl::types::IdlSeedAccount);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -729,7 +875,7 @@ pub struct IdlSeedAccount(anchor_idl::IdlSeedAccount);
 impl IdlSeedAccount {
     #[new]
     pub fn new(ty: IdlType, account: Option<String>, path: String) -> Self {
-        anchor_idl::IdlSeedAccount {
+        anchor_idl::types::IdlSeedAccount {
             ty: ty.into(),
             account,
             path,
@@ -764,7 +910,7 @@ pub enum IdlSeed {
     Account(IdlSeedAccount),
 }
 
-impl From<IdlSeed> for anchor_idl::IdlSeed {
+impl From<IdlSeed> for anchor_idl::types::IdlSeed {
     fn from(s: IdlSeed) -> Self {
         match s {
             IdlSeed::Const(x) => Self::Const(x.into()),
@@ -774,12 +920,12 @@ impl From<IdlSeed> for anchor_idl::IdlSeed {
     }
 }
 
-impl From<anchor_idl::IdlSeed> for IdlSeed {
-    fn from(s: anchor_idl::IdlSeed) -> Self {
+impl From<anchor_idl::types::IdlSeed> for IdlSeed {
+    fn from(s: anchor_idl::types::IdlSeed) -> Self {
         match s {
-            anchor_idl::IdlSeed::Const(x) => Self::Const(x.into()),
-            anchor_idl::IdlSeed::Arg(x) => Self::Arg(x.into()),
-            anchor_idl::IdlSeed::Account(x) => Self::Account(x.into()),
+            anchor_idl::types::IdlSeed::Const(x) => Self::Const(x.into()),
+            anchor_idl::types::IdlSeed::Arg(x) => Self::Arg(x.into()),
+            anchor_idl::types::IdlSeed::Account(x) => Self::Account(x.into()),
         }
     }
 }
@@ -796,7 +942,7 @@ impl IntoPy<PyObject> for IdlSeed {
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlPda(anchor_idl::IdlPda);
+pub struct IdlPda(anchor_idl::types::IdlPda);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -804,7 +950,7 @@ pub struct IdlPda(anchor_idl::IdlPda);
 impl IdlPda {
     #[new]
     pub fn new(seeds: Vec<IdlSeed>, program_id: Option<IdlSeed>) -> Self {
-        anchor_idl::IdlPda {
+        anchor_idl::types::IdlPda {
             seeds: iter_into!(seeds),
             program_id: program_id.map(|x| x.into()),
         }
@@ -827,7 +973,7 @@ debug_display!(IdlPda);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlAccount(anchor_idl::IdlAccount);
+pub struct IdlAccount(anchor_idl::types::IdlAccount);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -843,7 +989,7 @@ impl IdlAccount {
         pda: Option<IdlPda>,
         relations: Vec<String>,
     ) -> Self {
-        anchor_idl::IdlAccount {
+        anchor_idl::types::IdlAccount {
             name,
             is_mut,
             is_signer,
@@ -896,7 +1042,7 @@ debug_display!(IdlAccount);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlInstruction(anchor_idl::IdlInstruction);
+pub struct IdlInstruction(anchor_idl::types::IdlInstruction);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -910,7 +1056,7 @@ impl IdlInstruction {
         args: Vec<IdlField>,
         returns: Option<IdlType>,
     ) -> Self {
-        anchor_idl::IdlInstruction {
+        anchor_idl::types::IdlInstruction {
             name,
             docs,
             accounts: iter_into!(accounts),
@@ -951,7 +1097,7 @@ debug_display!(IdlInstruction);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlState(anchor_idl::IdlState);
+pub struct IdlState(anchor_idl::types::IdlState);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -959,7 +1105,7 @@ pub struct IdlState(anchor_idl::IdlState);
 impl IdlState {
     #[new]
     pub fn new(strct: IdlTypeDefinition, methods: Vec<IdlInstruction>) -> Self {
-        anchor_idl::IdlState {
+        anchor_idl::types::IdlState {
             strct: strct.into(),
             methods: iter_into!(methods),
         }
@@ -982,7 +1128,7 @@ debug_display!(IdlState);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlEvent(anchor_idl::IdlEvent);
+pub struct IdlEvent(anchor_idl::types::IdlEvent);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -990,7 +1136,7 @@ pub struct IdlEvent(anchor_idl::IdlEvent);
 impl IdlEvent {
     #[new]
     pub fn new(name: String, fields: Vec<IdlEventField>) -> Self {
-        anchor_idl::IdlEvent {
+        anchor_idl::types::IdlEvent {
             name,
             fields: iter_into!(fields),
         }
@@ -1013,7 +1159,7 @@ debug_display!(IdlEvent);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlEventField(anchor_idl::IdlEventField);
+pub struct IdlEventField(anchor_idl::types::IdlEventField);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -1021,7 +1167,7 @@ pub struct IdlEventField(anchor_idl::IdlEventField);
 impl IdlEventField {
     #[new]
     pub fn new(name: String, ty: IdlType, index: bool) -> Self {
-        anchor_idl::IdlEventField {
+        anchor_idl::types::IdlEventField {
             name,
             ty: ty.into(),
             index,
@@ -1050,7 +1196,7 @@ debug_display!(IdlEventField);
 
 #[derive(Debug, Clone, PartialEq, Eq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct IdlErrorCode(anchor_idl::IdlErrorCode);
+pub struct IdlErrorCode(anchor_idl::types::IdlErrorCode);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -1058,7 +1204,7 @@ pub struct IdlErrorCode(anchor_idl::IdlErrorCode);
 impl IdlErrorCode {
     #[new]
     pub fn new(code: u32, name: String, msg: Option<String>) -> Self {
-        anchor_idl::IdlErrorCode { code, name, msg }.into()
+        anchor_idl::types::IdlErrorCode { code, name, msg }.into()
     }
 
     #[getter]
@@ -1082,7 +1228,7 @@ debug_display!(IdlErrorCode);
 
 #[derive(Debug, Clone, PartialEq, From, Into, Serialize, Deserialize)]
 #[pyclass(module = "anchorpy_core.idl", subclass)]
-pub struct Idl(anchor_idl::Idl);
+pub struct Idl(anchor_idl::types::Idl);
 
 #[richcmp_eq_only]
 #[common_methods]
@@ -1096,7 +1242,6 @@ impl Idl {
         docs: Option<Vec<String>>,
         constants: Vec<IdlConst>,
         instructions: Vec<IdlInstruction>,
-        state: Option<IdlState>,
         accounts: Vec<IdlTypeDefinition>,
         types: Vec<IdlTypeDefinition>,
         events: Option<Vec<IdlEvent>>,
@@ -1104,13 +1249,12 @@ impl Idl {
         metadata: &PyAny,
     ) -> PyResult<Self> {
         let parsed_metadata = handle_py_value_err(depythonize::<Value>(metadata))?;
-        Ok(anchor_idl::Idl {
+        Ok(anchor_idl::types::Idl {
             version,
             name,
             docs,
             constants: iter_into!(constants),
             instructions: iter_into!(instructions),
-            state: state.map(|x| x.into()),
             accounts: iter_into!(accounts),
             types: iter_into!(types),
             events: events.map(|x| iter_into!(x)),
@@ -1139,10 +1283,6 @@ impl Idl {
     #[getter]
     pub fn instructions(&self) -> Vec<IdlInstruction> {
         iter_into!(self.0.instructions.clone())
-    }
-    #[getter]
-    pub fn state(&self) -> Option<IdlState> {
-        self.0.state.clone().map(|x| x.into())
     }
     #[getter]
     pub fn accounts(&self) -> Vec<IdlTypeDefinition> {
@@ -1176,6 +1316,8 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
     m.add_class::<IdlTypeOption>()?;
     m.add_class::<IdlTypeVec>()?;
     m.add_class::<IdlTypeArray>()?;
+    m.add_class::<IdlTypeGenericLenArray>()?;
+    m.add_class::<IdlTypeDefinedWithTypeArgs>()?;
     m.add_class::<IdlConst>()?;
     m.add_class::<IdlField>()?;
     m.add_class::<IdlTypeDefinitionTyStruct>()?;
@@ -1195,6 +1337,7 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
     m.add_class::<IdlEvent>()?;
     m.add_class::<IdlEventField>()?;
     m.add_class::<IdlErrorCode>()?;
+    m.add_class::<IdlTypeGeneric>()?;
     m.add_class::<Idl>()?;
 
     let typing = py.import("typing")?;
@@ -1235,7 +1378,16 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
     idl_type_members.extend(compound_members);
     m.add(
         "IdlType",
-        union.get_item(PyTuple::new(py, idl_type_members))?,
+        union.get_item(PyTuple::new(py, idl_type_members.clone()))?,
+    )?;
+    let mut idl_defined_type_arg_members = idl_type_members;
+    idl_defined_type_arg_members.extend(vec![
+        IdlTypeGeneric::type_object(py),
+        PyString::type_object(py),
+    ]);
+    m.add(
+        "IdlDefinedTypeArg",
+        union.get_item(PyTuple::new(py, idl_defined_type_arg_members))?,
     )?;
     let enum_fields_members = vec![
         EnumFieldsNamed::type_object(py),
