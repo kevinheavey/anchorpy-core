@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "anchorpy-core"
-version = "0.1.3"
+version = "0.2.0"
 description = "Python bindings for Anchor Rust code"
 authors = ["Kevin Heavey <kevinheavey123@gmail.com>"]
 license = "Apache-2.0"
@@ -26,7 +26,7 @@ build-backend = "maturin"
 
 [project]
 name = "anchorpy-core"
-version = "0.1.3"
+version = "0.2.0"
 description = "Python bindings for Anchor Rust code"
 authors = [ {name = "kevinheavey", email = "kevinheavey123@gmail.com"} ]
 license = {file = "LICENSE"}
