@@ -1349,6 +1349,7 @@ pub(crate) fn create_idl_mod(py: Python) -> PyResult<&PyModule> {
     m.add_class::<EnumFieldsTuple>()?;
     m.add_class::<IdlEnumVariant>()?;
     m.add_class::<IdlTypeDefinitionTyEnum>()?;
+    m.add_class::<IdlTypeDefinitionTyAlias>()?;
     m.add_class::<IdlTypeDefinition>()?;
     m.add_class::<IdlAccounts>()?;
     m.add_class::<IdlSeedConst>()?;
