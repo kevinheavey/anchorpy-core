@@ -86,8 +86,11 @@ def test_clientgen_example() -> None:
     )
     assert idl.metadata is None
 
+
 def test_alias() -> None:
-    raw = '{"name":"TickArryBitmap","type":{"kind":"alias","value":{"array":["u64",8]}}}'
+    raw = (
+        '{"name":"TickArryBitmap","type":{"kind":"alias","value":{"array":["u64",8]}}}'
+    )
     parsed = IdlTypeDefinition.from_json(raw)
     ty = parsed.ty
     assert isinstance(ty, IdlTypeDefinitionTyAlias)
